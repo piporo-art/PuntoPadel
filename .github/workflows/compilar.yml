@@ -25,10 +25,14 @@ jobs:
           java-version: '17'
 
       - name: Preparar Android
-        run: yes | sdkmanager --licenses || true
+        uses: android-actions/setup-android@v3
 
+      
       - name: Instalar SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+
 
       - name: Preparar Gradle
         uses: gradle/actions/setup-gradle@v4
