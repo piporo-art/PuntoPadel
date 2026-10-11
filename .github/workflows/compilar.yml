@@ -24,8 +24,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      
       - name: Preparar Android
-        uses: android-actions/setup-android@v3
+        run: echo "Usando Android SDK preinstalado"
 
       
       - name: Instalar SDK
