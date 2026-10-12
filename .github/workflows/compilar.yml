@@ -1,51 +1,53 @@
-
 name: Compilar Punto Padel APK
-
 on:
   workflow_dispatch:
-
 jobs:
   compilar:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
     steps:
       - name: Descargar archivos
         uses: actions/checkout@v4
-
       - name: Descomprimir proyecto
+        shell: bash
         run: |
-          ZIP=$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)
-          test -n "$ZIP" || { echo "ERROR: No se encontró el ZIP"; exit 1; }
+          ZIP=$(find . -maxdepth 1 -type f -name '*.zip' -print -quit)
+          test -n "$ZIP" || { echo 'No se encontró ZIP en la raíz'; exit 1; }
           unzip -o "$ZIP" -d .
-
+          test -f app/build.gradle.kts || { echo 'Falta app/build.gradle.kts'; exit 1; }
       - name: Instalar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
-      
       - name: Preparar Android
-        run: echo "Usando Android SDK preinstalado"
-
-      
-      - name: Instalar SDK
-        run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
-
-
+        uses: android-actions/setup-android@v3
+      - name: Instalar Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - name: Preparar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-
-      - name: Generar APK
-        run: gradle --no-daemon :app:assembleDebug
-
-      - name: Guardar APK
+      - name: Compilar APK release firmada
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          PUNTO_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          PUNTO_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          PUNTO_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64" || { echo 'Falta KEYSTORE_BASE64'; exit 1; }
+          test -n "$PUNTO_STORE_PASSWORD" || { echo 'Falta KEYSTORE_PASSWORD'; exit 1; }
+          test -n "$PUNTO_KEY_ALIAS" || { echo 'Falta KEY_ALIAS'; exit 1; }
+          test -n "$PUNTO_KEY_PASSWORD" || { echo 'Falta KEY_PASSWORD'; exit 1; }
+          export PUNTO_KEYSTORE_PATH="$RUNNER_TEMP/punto-padel-release.jks"
+          printf %s "$KEYSTORE_BASE64" | base64 --decode > "$PUNTO_KEYSTORE_PATH"
+          gradle --no-daemon :app:assembleRelease
+      - name: Guardar APK firmada
         uses: actions/upload-artifact@v4
         with:
-          name: PuntoPadel-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          
+          name: PuntoPadel-1.0-Firmada
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
