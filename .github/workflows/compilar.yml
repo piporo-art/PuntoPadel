@@ -16,6 +16,8 @@ jobs:
           test -n "$ZIP" || { echo 'No se encontró ZIP en la raíz'; exit 1; }
           unzip -o "$ZIP" -d .
           test -f app/build.gradle.kts || { echo 'Falta app/build.gradle.kts'; exit 1; }
+          sed -i -E 's/(applicationId[[:space:]]*=[[:space:]]*")[^"]+(")/\1com.puntopadel.prueba11\2/' app/build.gradle.kts
+          grep -q 'com.puntopadel.prueba11' app/build.gradle.kts || { echo 'ERROR: No se cambio el identificador'; exit 1; }
       - name: Instalar Java
         uses: actions/setup-java@v4
         with:
